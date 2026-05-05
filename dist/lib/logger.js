@@ -8,9 +8,22 @@ function logFilePath() {
     const date = new Date().toISOString().split('T')[0];
     return path.join(LOG_DIR, `${date}.log`);
 }
+const LOG_RETENTION_DAYS = 30;
+try {
+    fs.mkdirSync(LOG_DIR, { recursive: true });
+    const cutoff = Date.now() - LOG_RETENTION_DAYS * 24 * 60 * 60 * 1000;
+    for (const file of fs.readdirSync(LOG_DIR)) {
+        const filePath = path.join(LOG_DIR, file);
+        if (fs.statSync(filePath).mtimeMs < cutoff) {
+            fs.unlinkSync(filePath);
+        }
+    }
+}
+catch {
+    // if this fails, writes will silently no-op below
+}
 function write(level, event, data) {
     try {
-        fs.mkdirSync(LOG_DIR, { recursive: true });
         const entry = {
             timestamp: new Date().toISOString(),
             session: SESSION_ID,

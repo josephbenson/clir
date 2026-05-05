@@ -9,8 +9,8 @@ type KnownError = {
 const KNOWN_ERRORS: KnownError[] = [
   {
     pattern: /ECONNREFUSED/,
-    issue: 'Database connection refused — your database is not running.',
-    fix: 'If this project uses Docker, run:\n  docker compose up -d\nThen try again.',
+    issue: 'Database connection refused.',
+    fix: 'Check that your database connection string in .env.local is correct and the database is reachable.\n  If using a cloud provider like Neon or Supabase, verify the connection string is set.\n  If running locally, make sure the database server is started.',
   },
   {
     pattern: /MissingSecret/,
