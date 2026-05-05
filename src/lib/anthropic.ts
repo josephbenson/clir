@@ -17,3 +17,7 @@ export function getClient(): Anthropic {
   }
   return client;
 }
+
+export function isAuthError(err: unknown): boolean {
+  return err instanceof Anthropic.AuthenticationError;
+}

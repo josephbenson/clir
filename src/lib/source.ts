@@ -29,6 +29,35 @@ function cloneRepo(url: string, targetDir?: string): string {
   }
 
   console.log(`Cloning ${url}...`);
-  execSync(`git clone "${url}" "${destination}"`, { stdio: 'inherit' });
+
+  try {
+    execSync(`git clone "${url}" "${destination}"`, { stdio: 'pipe' });
+  } catch (err) {
+    const output = err instanceof Error && 'stderr' in err
+      ? String((err as NodeJS.ErrnoException & { stderr: Buffer }).stderr)
+      : '';
+
+    if (/not found|does not exist|Repository not found/i.test(output)) {
+      throw new Error(
+        `Could not find the repository at ${url}\n` +
+        'Check that the URL is correct and the repo is public.',
+      );
+    }
+
+    if (/Authentication failed|could not read Username/i.test(output)) {
+      throw new Error(
+        `Could not access ${url} — the repository may be private.\n` +
+        'Make sure you are authenticated with GitHub:\n' +
+        '  gh auth login',
+      );
+    }
+
+    if (/Could not resolve host/i.test(output)) {
+      throw new Error('Could not reach GitHub. Check your internet connection.');
+    }
+
+    throw new Error(`Git clone failed:\n${output || 'Unknown error — is git installed?'}`);
+  }
+
   return destination;
 }

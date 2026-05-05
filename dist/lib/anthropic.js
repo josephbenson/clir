@@ -13,3 +13,6 @@ export function getClient() {
     }
     return client;
 }
+export function isAuthError(err) {
+    return err instanceof Anthropic.AuthenticationError;
+}

@@ -1,4 +1,4 @@
-import { getClient } from './anthropic.js';
+import { getClient, isAuthError } from './anthropic.js';
 
 type ParsedInstructions = {
   installCommand: string;
@@ -20,7 +20,9 @@ function isValidInstructions(value: unknown): value is ParsedInstructions {
 export async function parseInstructions(docs: string): Promise<ParsedInstructions> {
   const client = getClient();
 
-  const response = await client.messages.create({
+  let response;
+  try {
+    response = await client.messages.create({
     model: 'claude-haiku-4-5-20251001',
     max_tokens: 512,
     system: 'You extract CLI setup commands from project documentation. Respond with JSON only, no explanation.',
@@ -39,6 +41,15 @@ export async function parseInstructions(docs: string): Promise<ParsedInstruction
       },
     ],
   });
+  } catch (err) {
+    if (isAuthError(err)) {
+      throw new Error(
+        'Your ANTHROPIC_API_KEY is invalid or has been revoked.\n' +
+        'Generate a new key at https://console.anthropic.com and update your shell profile.',
+      );
+    }
+    throw err;
+  }
 
   const raw = response.content[0].type === 'text' ? response.content[0].text : '';
   const json = raw.replace(/^```(?:json)?\n?/, '').replace(/\n?```$/, '').trim();

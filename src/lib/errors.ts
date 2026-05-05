@@ -1,4 +1,4 @@
-import { getClient } from './anthropic.js';
+import { getClient, isAuthError } from './anthropic.js';
 
 type KnownError = {
   pattern: RegExp;
@@ -55,7 +55,9 @@ export function matchKnownErrors(output: string): KnownError[] {
 export async function analyzeWithClaude(output: string): Promise<string | null> {
   if (!process.env.ANTHROPIC_API_KEY) return null;
 
-  const response = await getClient().messages.create({
+  let response;
+  try {
+    response = await getClient().messages.create({
     model: 'claude-haiku-4-5-20251001',
     max_tokens: 300,
     system: 'You help developers understand why their app failed to start. Be concise and practical. No markdown.',
@@ -66,6 +68,12 @@ export async function analyzeWithClaude(output: string): Promise<string | null> 
         `${output.slice(-3000)}`,
     }],
   });
+  } catch (err) {
+    if (isAuthError(err)) {
+      console.log('\n\x1b[33m  Your ANTHROPIC_API_KEY is invalid — crash analysis unavailable.\x1b[0m');
+    }
+    return null;
+  }
 
   return response.content[0].type === 'text' ? response.content[0].text.trim() : null;
 }

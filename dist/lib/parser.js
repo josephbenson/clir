@@ -1,4 +1,4 @@
-import { getClient } from './anthropic.js';
+import { getClient, isAuthError } from './anthropic.js';
 function isValidInstructions(value) {
     if (typeof value !== 'object' || value === null)
         return false;
@@ -10,24 +10,34 @@ function isValidInstructions(value) {
 }
 export async function parseInstructions(docs) {
     const client = getClient();
-    const response = await client.messages.create({
-        model: 'claude-haiku-4-5-20251001',
-        max_tokens: 512,
-        system: 'You extract CLI setup commands from project documentation. Respond with JSON only, no explanation.',
-        messages: [
-            {
-                role: 'user',
-                content: `Extract all commands needed to set up and run this project locally from these project files.\n\n` +
-                    `${docs}\n\n` +
-                    `Respond with this exact JSON format, no other text:\n` +
-                    `{"installCommand":"...","setupCommands":["command1","command2"],"startCommand":"..."}\n\n` +
-                    `setupCommands should include things like code generation, database migrations, seeding — ` +
-                    `anything that runs after install but before starting the server. ` +
-                    `Omit commands that require secrets or external services (like docker). ` +
-                    `Use empty array if none.`,
-            },
-        ],
-    });
+    let response;
+    try {
+        response = await client.messages.create({
+            model: 'claude-haiku-4-5-20251001',
+            max_tokens: 512,
+            system: 'You extract CLI setup commands from project documentation. Respond with JSON only, no explanation.',
+            messages: [
+                {
+                    role: 'user',
+                    content: `Extract all commands needed to set up and run this project locally from these project files.\n\n` +
+                        `${docs}\n\n` +
+                        `Respond with this exact JSON format, no other text:\n` +
+                        `{"installCommand":"...","setupCommands":["command1","command2"],"startCommand":"..."}\n\n` +
+                        `setupCommands should include things like code generation, database migrations, seeding — ` +
+                        `anything that runs after install but before starting the server. ` +
+                        `Omit commands that require secrets or external services (like docker). ` +
+                        `Use empty array if none.`,
+                },
+            ],
+        });
+    }
+    catch (err) {
+        if (isAuthError(err)) {
+            throw new Error('Your ANTHROPIC_API_KEY is invalid or has been revoked.\n' +
+                'Generate a new key at https://console.anthropic.com and update your shell profile.');
+        }
+        throw err;
+    }
     const raw = response.content[0].type === 'text' ? response.content[0].text : '';
     const json = raw.replace(/^```(?:json)?\n?/, '').replace(/\n?```$/, '').trim();
     let parsed;
