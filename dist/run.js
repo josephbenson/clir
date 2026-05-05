@@ -24,13 +24,24 @@ export async function run(source, options) {
     let startCommand = stack?.startCommand ?? '';
     logger.info('stack_detected', { installCommand, setupCommands, startCommand, usedDetector: !!stack });
     if (!installCommand || !startCommand) {
-        console.log('Reading project docs to determine setup...');
-        const docs = readDocs(projectDir);
-        const parsed = await parseInstructions(docs);
-        installCommand = installCommand || parsed.installCommand;
-        setupCommands = setupCommands.length ? setupCommands : parsed.setupCommands;
-        startCommand = startCommand || parsed.startCommand;
-        logger.info('docs_parsed', { installCommand, setupCommands, startCommand });
+        if (process.env.ANTHROPIC_API_KEY) {
+            console.log('Reading project docs to determine setup...');
+            const docs = readDocs(projectDir);
+            const parsed = await parseInstructions(docs);
+            installCommand = installCommand || parsed.installCommand;
+            setupCommands = setupCommands.length ? setupCommands : parsed.setupCommands;
+            startCommand = startCommand || parsed.startCommand;
+            logger.info('docs_parsed', { installCommand, setupCommands, startCommand });
+        }
+        else {
+            logger.warn('stack_not_detected');
+            console.log('\nclir could not automatically detect how to set up this project.');
+            console.log('\nOpen the project README and paste it into ChatGPT, Claude, or Gemini with this prompt:');
+            console.log('\n  "What commands do I need to run to install and start this project locally?');
+            console.log('   List them in order: install, any setup steps, then the start command."');
+            console.log('\nOnce you know the commands, run them manually from:\n  ' + projectDir + '\n');
+            process.exit(0);
+        }
     }
     if (!startCommand) {
         logger.error('start_command_missing');

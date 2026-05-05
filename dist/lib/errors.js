@@ -46,8 +46,12 @@ export function matchKnownErrors(output) {
     });
 }
 export async function analyzeWithClaude(output) {
-    if (!process.env.ANTHROPIC_API_KEY)
+    if (!process.env.ANTHROPIC_API_KEY) {
+        console.log('\n\x1b[33m  clir could not identify this error automatically.\x1b[0m');
+        console.log('\x1b[33m  Paste the output above into ChatGPT, Claude, or Gemini and ask:\x1b[0m');
+        console.log('\x1b[33m  "Why did this app fail to start and how do I fix it?"\x1b[0m\n');
         return null;
+    }
     let response;
     try {
         response = await getClient().messages.create({

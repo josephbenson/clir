@@ -53,7 +53,12 @@ export function matchKnownErrors(output: string): KnownError[] {
 }
 
 export async function analyzeWithClaude(output: string): Promise<string | null> {
-  if (!process.env.ANTHROPIC_API_KEY) return null;
+  if (!process.env.ANTHROPIC_API_KEY) {
+    console.log('\n\x1b[33m  clir could not identify this error automatically.\x1b[0m');
+    console.log('\x1b[33m  Paste the output above into ChatGPT, Claude, or Gemini and ask:\x1b[0m');
+    console.log('\x1b[33m  "Why did this app fail to start and how do I fix it?"\x1b[0m\n');
+    return null;
+  }
 
   let response;
   try {

@@ -18,7 +18,7 @@ clir                           # run from inside a project folder
 2. Copies `.env.example` to `.env.local` if the project includes one
 3. Checks for missing environment variables and warns you about what to fill in
 4. Detects the tech stack and figures out the right install and start commands
-5. If it cannot figure out the setup on its own, it reads the README and uses Claude to extract the steps
+5. If it cannot figure out the setup on its own, it tells you what to paste into your preferred AI (ChatGPT, Claude, Gemini, etc.) to get the answer
 6. Installs dependencies and runs any setup steps (like generating a database client or running migrations)
 7. Starts the dev server and prints the local URL so you can open it in your browser
 
@@ -28,7 +28,8 @@ clir                           # run from inside a project folder
 
 - [Node.js](https://nodejs.org) v20 or higher
 - [Git](https://git-scm.com)
-- An Anthropic API key — only needed when clir has to read a README to figure out how to set up a project. Get one at [console.anthropic.com](https://console.anthropic.com).
+
+No API key required. clir works entirely on its own for Node.js, Python, and Go projects. When it hits something it cannot figure out, it tells you exactly what to paste into ChatGPT, Claude, Gemini, or whichever AI you use.
 
 ---
 
@@ -50,11 +51,11 @@ npm install -g .
 
 ---
 
-## API key setup
+## Optional: Anthropic API key
 
-clir uses Claude (via the Anthropic API) to read project documentation when it cannot automatically detect how to set up a project. You need to provide your own API key — clir does not include one.
+If you have an Anthropic API key, clir can automatically parse project documentation and analyze crash output without any copy-pasting. Without a key, clir will instead give you a ready-made prompt to paste into whichever AI you prefer.
 
-Get your key at [console.anthropic.com](https://console.anthropic.com), then add it to your shell profile:
+To use auto-analysis, add your key to your shell profile:
 
 **Mac / Linux (zsh):**
 ```bash
@@ -68,7 +69,7 @@ echo 'export ANTHROPIC_API_KEY=your-key-here' >> ~/.bash_profile
 source ~/.bash_profile
 ```
 
-Replace `your-key-here` with your actual key. Keep this key private — do not share it or commit it to any repository.
+Get a key at [console.anthropic.com](https://console.anthropic.com). Keep it private — do not share it or commit it to any repository.
 
 ---
 
@@ -168,7 +169,7 @@ docker compose up -d
 ```
 
 **clir cannot figure out how to set up a project**
-Make sure `ANTHROPIC_API_KEY` is set in your shell. Run `clir diagnose` to see what happened.
+clir will print the project README location and a prompt to paste into your preferred AI. Follow those instructions, then run the commands manually. Run `clir diagnose` to see what happened.
 
 **A variable in `.env.local` is empty**
 clir will warn you at startup and tell you what each variable is for. Fill in the values, then run `clir --skip-install` to restart.
