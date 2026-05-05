@@ -34,6 +34,12 @@ clir                           # run from inside a project folder
 ## Installation
 
 ```bash
+npm install -g @josephbenson/clir
+```
+
+Or if you prefer to build from source:
+
+```bash
 git clone https://github.com/josephbenson/clir.git
 cd clir
 npm install
@@ -83,7 +89,7 @@ clir
 
 **Skip reinstalling dependencies (faster if already installed):**
 ```bash
-clir --no-install
+clir --skip-install
 ```
 
 **Clone into a specific directory:**
@@ -144,4 +150,4 @@ docker compose up -d
 Make sure `ANTHROPIC_API_KEY` is set in your shell. Run `clir diagnose` to see what happened.
 
 **A variable in `.env.local` is empty**
-clir will warn you at startup. Open `.env.local` in a text editor, fill in the required values, then run `clir --no-install`.
+clir will warn you at startup. Open `.env.local` in a text editor, fill in the required values, then run `clir --skip-install`.
