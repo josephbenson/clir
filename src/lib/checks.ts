@@ -6,11 +6,9 @@ export type Warning = {
   fix: string;
 };
 
-type EnvVarCategory = 'database' | 'auth-secret' | 'api-key' | 'unknown';
-
-const DB_PATTERNS = /DATABASE|DB_URL|POSTGRES|MYSQL|MONGO|REDIS|SUPABASE_DB/i;
-const SECRET_PATTERNS = /SECRET|PRIVATE_KEY|SIGNING_KEY/i;
-const API_KEY_PATTERNS = /API_KEY|ACCESS_TOKEN|CLIENT_SECRET|APP_PRIVATE_KEY/i;
+const DB_PATTERNS = /DATABASE|DB_URL|DB_HOST|DB_NAME|DB_PASS|POSTGRES|PG_|PGHOST|PGPASSWORD|PGUSER|MYSQL|MONGO|REDIS|TURSO|PLANETSCALE|COCKROACH|FAUNA|SQLITE|NEON|SUPABASE_DB|TIDB|XATA/i;
+const SECRET_PATTERNS = /(?:^|_)SECRET$|PRIVATE_KEY|SIGNING_KEY|NEXTAUTH_SECRET|AUTH_SECRET|JWT_SECRET|SESSION_SECRET|ENCRYPTION_KEY|WEBHOOK_SECRET/i;
+const API_KEY_PATTERNS = /API_KEY|ACCESS_TOKEN|CLIENT_SECRET|APP_PRIVATE_KEY|CLIENT_ID|APP_ID|APP_SLUG/i;
 
 export function runPreflightChecks(projectDir: string): Warning[] {
   return checkEmptyEnvVars(projectDir);
@@ -30,8 +28,13 @@ function checkEmptyEnvVars(projectDir: string): Warning[] {
 
   if (!emptyVars.length) return [];
 
-  const hasCompose = ['docker-compose.yml', 'docker-compose.yaml', 'compose.yml', 'compose.yaml']
-    .some(f => fs.existsSync(path.join(projectDir, f)));
+  const hasDbCompose = ['docker-compose.yml', 'docker-compose.yaml', 'compose.yml', 'compose.yaml']
+    .map(f => path.join(projectDir, f))
+    .filter(f => fs.existsSync(f))
+    .some(f => {
+      const content = fs.readFileSync(f, 'utf-8');
+      return /postgres|mysql|mongo|redis|mariadb/i.test(content);
+    });
 
   const warnings: Warning[] = [];
 
@@ -43,8 +46,8 @@ function checkEmptyEnvVars(projectDir: string): Warning[] {
   );
 
   if (dbVars.length) {
-    const fix = hasCompose
-      ? `Set ${dbVars.join(', ')} to a connection string from a cloud provider like Neon (neon.tech) or Supabase.\n  If you prefer a local database, run: docker compose up -d`
+    const fix = hasDbCompose
+      ? `Set ${dbVars.join(', ')} to a connection string from a cloud provider like Neon (neon.tech) or Supabase.\n  Alternatively, start a local database with: docker compose up -d`
       : `Set ${dbVars.join(', ')} to a connection string from a cloud provider like Neon (neon.tech) or Supabase.`;
 
     warnings.push({
