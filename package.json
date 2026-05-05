@@ -1,5 +1,5 @@
 {
-  "name": "@josephbenson/clir",
+  "name": "@joeyba/clir",
   "version": "0.1.0",
   "description": "Run any GitHub repo or local project locally with one command",
   "type": "module",

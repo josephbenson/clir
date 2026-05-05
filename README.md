@@ -15,11 +15,12 @@ clir                           # run from inside a project folder
 ## What it does
 
 1. Clones the repo (if you gave it a GitHub URL)
-2. Checks for missing environment variables and warns you about them
-3. Detects the tech stack and figures out the right install and start commands
-4. If it can't figure out the setup on its own, it reads the README and uses Claude to extract the steps
-5. Installs dependencies, runs setup steps (like database migrations or code generation), and starts the dev server
-6. Prints the local URL so you can open it in your browser
+2. Copies `.env.example` to `.env.local` if the project includes one
+3. Checks for missing environment variables and warns you about what to fill in
+4. Detects the tech stack and figures out the right install and start commands
+5. If it cannot figure out the setup on its own, it reads the README and uses Claude to extract the steps
+6. Installs dependencies and runs any setup steps (like generating a database client or running migrations)
+7. Starts the dev server and prints the local URL so you can open it in your browser
 
 ---
 
@@ -27,17 +28,17 @@ clir                           # run from inside a project folder
 
 - [Node.js](https://nodejs.org) v20 or higher
 - [Git](https://git-scm.com)
-- An Anthropic API key — only used when clir needs to read a README to figure out how to set up a project. You can get one at [console.anthropic.com](https://console.anthropic.com).
+- An Anthropic API key — only needed when clir has to read a README to figure out how to set up a project. Get one at [console.anthropic.com](https://console.anthropic.com).
 
 ---
 
 ## Installation
 
 ```bash
-npm install -g @josephbenson/clir
+npm install -g @joeyba/clir
 ```
 
-Or if you prefer to build from source:
+Or build from source:
 
 ```bash
 git clone https://github.com/josephbenson/clir.git
@@ -69,8 +70,6 @@ source ~/.bash_profile
 
 Replace `your-key-here` with your actual key. Keep this key private — do not share it or commit it to any repository.
 
-If you use a different AI provider, clir currently only supports the Anthropic API. Contributions to add support for other providers are welcome.
-
 ---
 
 ## Usage
@@ -87,12 +86,12 @@ clir ./path/to/project
 clir
 ```
 
-**Skip reinstalling dependencies (faster if already installed):**
+**Skip reinstalling dependencies (faster on repeat runs):**
 ```bash
 clir --skip-install
 ```
 
-**Clone into a specific directory:**
+**Clone into a specific folder:**
 ```bash
 clir https://github.com/some/repo --dir ~/projects/my-clone
 ```
@@ -106,15 +105,36 @@ clir diagnose
 
 ## Environment variables
 
-When clir finds a `.env.example` file in a project, it automatically copies it to `.env.local` so the project can start. It will also warn you about any variables that are empty and need to be filled in.
+Many projects require configuration values — database connection strings, API keys, auth secrets — before they will work. These are stored in a file called `.env.local`.
 
-Some projects require secrets (API keys, database passwords, etc.) that you will need to supply yourself before the app will work correctly.
+When clir finds a `.env.example` file in a project, it automatically copies it to `.env.local` so the project can start. It will then check for any empty values and tell you exactly what to fill in and where to get it.
+
+For example:
+- **Database variables** — clir will tell you to get a connection string from a provider like [Neon](https://neon.tech) or [Supabase](https://supabase.com)
+- **Auth secrets** — clir will give you the exact command to generate one
+- **API keys** — clir will tell you which service to get them from
+
+Once you have filled in the values, run `clir --skip-install` to restart without reinstalling everything.
 
 ---
 
-## Logging
+## Error detection
 
-clir writes a structured log of every run to `~/.clir/logs/`. Each file covers one day. Run `clir diagnose` to get a summary of recent activity and any issues detected.
+If the app fails to start, clir reads the error output and tells you what went wrong in plain language, along with steps to fix it. It handles common problems automatically, including:
+
+- Database connection errors
+- Missing auth secrets
+- Missing or ungenerated Prisma client
+- Native module compatibility issues
+- Missing environment files
+
+For anything it does not recognise, it sends the error to Claude for analysis (requires an Anthropic API key).
+
+---
+
+## Logging and diagnostics
+
+clir keeps a structured log of every run in `~/.clir/logs/`. Run `clir diagnose` at any time to get a plain-English summary of recent activity and any problems detected.
 
 ---
 
@@ -125,10 +145,11 @@ clir detects these automatically without needing to read the README:
 | Stack | Detected by |
 |---|---|
 | Node.js (npm / pnpm / yarn / bun) | `package.json` |
+| Python (uv / poetry / pipenv / pip) | `uv.lock`, `poetry.lock`, `Pipfile`, `pyproject.toml`, `requirements.txt` |
 | Go | `go.mod` |
-| Prisma (code generation) | `prisma/schema.prisma` |
+| Prisma (client generation) | `prisma/schema.prisma` |
 
-For anything else — Python, Ruby, Rust, etc. — clir reads the README and uses Claude to extract the setup steps.
+For anything else, clir reads the README and uses Claude to extract the setup steps.
 
 ---
 
@@ -141,7 +162,7 @@ corepack enable pnpm   # or yarn, or bun
 ```
 
 **App starts but shows database errors**
-The project needs a database that isn't running. If it includes a `docker-compose.yml`, start it with:
+Open `.env.local` in a text editor and fill in the database connection string. You can get a free one from [Neon](https://neon.tech) or [Supabase](https://supabase.com). If the project includes a `docker-compose.yml` with a local database, start it with:
 ```bash
 docker compose up -d
 ```
@@ -150,4 +171,10 @@ docker compose up -d
 Make sure `ANTHROPIC_API_KEY` is set in your shell. Run `clir diagnose` to see what happened.
 
 **A variable in `.env.local` is empty**
-clir will warn you at startup. Open `.env.local` in a text editor, fill in the required values, then run `clir --skip-install`.
+clir will warn you at startup and tell you what each variable is for. Fill in the values, then run `clir --skip-install` to restart.
+
+**The app shows a Prisma error**
+clir automatically generates the Prisma client before starting the app, but if something went wrong you can run it manually:
+```bash
+npx prisma generate
+```
