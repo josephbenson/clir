@@ -22,7 +22,7 @@ program
 program
     .argument('[source]', 'GitHub URL or local path (defaults to current directory)')
     .option('-d, --dir <path>', 'target directory when cloning a GitHub repo')
-    .option('--no-install', 'skip dependency installation')
+    .option('--skip-install', 'skip dependency installation')
     .action(async (...args) => {
     try {
         await run(...args);

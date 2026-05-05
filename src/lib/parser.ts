@@ -1,4 +1,4 @@
-import Anthropic from '@anthropic-ai/sdk';
+import { getClient } from './anthropic.js';
 
 type ParsedInstructions = {
   installCommand: string;
@@ -6,16 +6,19 @@ type ParsedInstructions = {
   startCommand: string;
 };
 
-export async function parseInstructions(docs: string): Promise<ParsedInstructions> {
-  const apiKey = process.env.ANTHROPIC_API_KEY;
-  if (!apiKey) {
-    throw new Error(
-      'ANTHROPIC_API_KEY is not set. Set it to let clir read complex project instructions.\n' +
-      'Export it in your shell or add it to a .env file in the project directory.',
-    );
-  }
+function isValidInstructions(value: unknown): value is ParsedInstructions {
+  if (typeof value !== 'object' || value === null) return false;
+  const v = value as Record<string, unknown>;
+  return (
+    typeof v.installCommand === 'string' &&
+    Array.isArray(v.setupCommands) &&
+    v.setupCommands.every(c => typeof c === 'string') &&
+    typeof v.startCommand === 'string'
+  );
+}
 
-  const client = new Anthropic({ apiKey });
+export async function parseInstructions(docs: string): Promise<ParsedInstructions> {
+  const client = getClient();
 
   const response = await client.messages.create({
     model: 'claude-haiku-4-5-20251001',
@@ -40,9 +43,16 @@ export async function parseInstructions(docs: string): Promise<ParsedInstruction
   const raw = response.content[0].type === 'text' ? response.content[0].text : '';
   const json = raw.replace(/^```(?:json)?\n?/, '').replace(/\n?```$/, '').trim();
 
+  let parsed: unknown;
   try {
-    return JSON.parse(json) as ParsedInstructions;
+    parsed = JSON.parse(json);
   } catch {
-    throw new Error('Could not parse setup instructions from project docs.');
+    throw new Error('Claude returned a response that could not be parsed. Try running again.');
   }
+
+  if (!isValidInstructions(parsed)) {
+    throw new Error('Claude returned an unexpected response shape. Try running again.');
+  }
+
+  return parsed;
 }

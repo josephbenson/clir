@@ -2,7 +2,7 @@ import { execSync } from 'child_process';
 import fs from 'fs';
 import path from 'path';
 
-export async function resolveSource(source: string, targetDir?: string): Promise<string> {
+export function resolveSource(source: string, targetDir?: string): string {
   if (isGitHubUrl(source)) {
     return cloneRepo(source, targetDir);
   }

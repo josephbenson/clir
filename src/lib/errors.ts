@@ -1,4 +1,4 @@
-import Anthropic from '@anthropic-ai/sdk';
+import { getClient } from './anthropic.js';
 
 type KnownError = {
   pattern: RegExp;
@@ -53,12 +53,9 @@ export function matchKnownErrors(output: string): KnownError[] {
 }
 
 export async function analyzeWithClaude(output: string): Promise<string | null> {
-  const apiKey = process.env.ANTHROPIC_API_KEY;
-  if (!apiKey) return null;
+  if (!process.env.ANTHROPIC_API_KEY) return null;
 
-  const client = new Anthropic({ apiKey });
-
-  const response = await client.messages.create({
+  const response = await getClient().messages.create({
     model: 'claude-haiku-4-5-20251001',
     max_tokens: 300,
     system: 'You help developers understand why their app failed to start. Be concise and practical. No markdown.',

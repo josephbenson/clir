@@ -9,13 +9,13 @@ import { logger } from './lib/logger.js';
 
 type Options = {
   dir?: string;
-  install: boolean;
+  skipInstall?: boolean;
 };
 
 export async function run(source: string | undefined, options: Options): Promise<void> {
-  logger.info('session_start', { source: source ?? '.', install: options.install });
+  logger.info('session_start', { source: source ?? '.', skipInstall: options.skipInstall ?? false });
 
-  const projectDir = await resolveSource(source ?? '.', options.dir);
+  const projectDir = resolveSource(source ?? '.', options.dir);
 
   await checkEnvExample(projectDir);
 
@@ -50,7 +50,7 @@ export async function run(source: string | undefined, options: Options): Promise
     process.exit(1);
   }
 
-  if (options.install && installCommand) {
+  if (!options.skipInstall && installCommand) {
     console.log(`\nInstalling: ${installCommand}`);
     await execute(installCommand, projectDir, false);
   }

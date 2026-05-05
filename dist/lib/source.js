@@ -1,7 +1,7 @@
 import { execSync } from 'child_process';
 import fs from 'fs';
 import path from 'path';
-export async function resolveSource(source, targetDir) {
+export function resolveSource(source, targetDir) {
     if (isGitHubUrl(source)) {
         return cloneRepo(source, targetDir);
     }

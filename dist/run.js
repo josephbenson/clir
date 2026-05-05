@@ -7,8 +7,8 @@ import { checkEnvExample } from './lib/env.js';
 import { runPreflightChecks } from './lib/checks.js';
 import { logger } from './lib/logger.js';
 export async function run(source, options) {
-    logger.info('session_start', { source: source ?? '.', install: options.install });
-    const projectDir = await resolveSource(source ?? '.', options.dir);
+    logger.info('session_start', { source: source ?? '.', skipInstall: options.skipInstall ?? false });
+    const projectDir = resolveSource(source ?? '.', options.dir);
     await checkEnvExample(projectDir);
     const warnings = runPreflightChecks(projectDir);
     for (const warning of warnings) {
@@ -37,7 +37,7 @@ export async function run(source, options) {
         console.error('Could not determine the start command. Check the project README and try manually.');
         process.exit(1);
     }
-    if (options.install && installCommand) {
+    if (!options.skipInstall && installCommand) {
         console.log(`\nInstalling: ${installCommand}`);
         await execute(installCommand, projectDir, false);
     }
