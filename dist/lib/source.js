@@ -1,6 +1,7 @@
 import { execSync } from 'child_process';
 import fs from 'fs';
 import path from 'path';
+import { printStatus } from './ui.js';
 export function resolveSource(source, targetDir) {
     if (isGitHubUrl(source)) {
         return cloneRepo(source, targetDir);
@@ -9,7 +10,7 @@ export function resolveSource(source, targetDir) {
     if (!fs.existsSync(localPath)) {
         throw new Error(`Path does not exist: ${localPath}`);
     }
-    console.log(`Using local project: ${localPath}`);
+    printStatus(`Using local project: ${localPath}`);
     return localPath;
 }
 function isGitHubUrl(source) {
@@ -19,10 +20,10 @@ function cloneRepo(url, targetDir) {
     const repoName = url.split('/').pop()?.replace(/\.git$/, '') ?? 'repo';
     const destination = path.resolve(targetDir ?? repoName);
     if (fs.existsSync(destination)) {
-        console.log(`Using existing directory: ${destination}`);
+        printStatus(`Using existing directory: ${destination}`);
         return destination;
     }
-    console.log(`Cloning ${url}...`);
+    printStatus(`Cloning ${url}...`);
     try {
         execSync(`git clone "${url}" "${destination}"`, { stdio: 'pipe' });
     }

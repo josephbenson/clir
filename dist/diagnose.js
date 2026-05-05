@@ -1,6 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import { LOG_DIR } from './lib/logger.js';
+import { printInfo } from './lib/ui.js';
 export async function diagnose() {
     if (!fs.existsSync(LOG_DIR)) {
         console.log('No logs yet. Run clir on a project first.');
@@ -31,6 +32,9 @@ export async function diagnose() {
             console.log(line);
         }
     }
-    console.log('\nTo get a diagnosis, paste the above into ChatGPT, Claude, or Gemini and ask:');
-    console.log('  "I used a tool called clir to run a project. What went wrong and what should I do?"\n');
+    printInfo([
+        'To get a diagnosis, paste the above into ChatGPT, Claude, or Gemini:',
+        '   "I used a tool called clir to run a project locally.',
+        '    What went wrong and what should I do?"',
+    ]);
 }

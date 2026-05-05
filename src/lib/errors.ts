@@ -1,7 +1,9 @@
 import { getClient, isAuthError } from './anthropic.js';
+import { printInfo } from './ui.js';
 
 type KnownError = {
   pattern: RegExp;
+  suppressedBy?: RegExp;
   issue: string;
   fix: string;
 };
@@ -32,6 +34,7 @@ const KNOWN_ERRORS: KnownError[] = [
   },
   {
     pattern: /Cannot find module/,
+    suppressedBy: /Cannot find native binding|binding.*not found/i,
     issue: 'A required module is missing.',
     fix: 'Try reinstalling dependencies:\n  pnpm install (or npm install)',
   },
@@ -46,6 +49,7 @@ export function matchKnownErrors(output: string): KnownError[] {
   const seen = new Set<string>();
   return KNOWN_ERRORS.filter(e => {
     if (!e.pattern.test(output)) return false;
+    if (e.suppressedBy?.test(output)) return false;
     if (seen.has(e.issue)) return false;
     seen.add(e.issue);
     return true;
@@ -54,9 +58,12 @@ export function matchKnownErrors(output: string): KnownError[] {
 
 export async function analyzeWithClaude(output: string): Promise<string | null> {
   if (!process.env.ANTHROPIC_API_KEY) {
-    console.log('\n\x1b[33m  clir could not identify this error automatically.\x1b[0m');
-    console.log('\x1b[33m  Paste the output above into ChatGPT, Claude, or Gemini and ask:\x1b[0m');
-    console.log('\x1b[33m  "Why did this app fail to start and how do I fix it?"\x1b[0m\n');
+    printInfo([
+      'clir could not identify this error automatically.',
+      '',
+      'Paste the output above into ChatGPT, Claude, or Gemini and ask:',
+      '   "Why did this app fail to start and how do I fix it?"',
+    ]);
     return null;
   }
 

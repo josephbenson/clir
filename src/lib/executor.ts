@@ -1,6 +1,7 @@
 import { spawn, ChildProcess } from 'child_process';
 import { matchKnownErrors, analyzeWithClaude } from './errors.js';
 import { logger } from './logger.js';
+import { printError, printUrl } from './ui.js';
 
 const LOCAL_URL_RE = /https?:\/\/(localhost|127\.0\.0\.1):\d+/;
 const MAX_BUFFER_BYTES = 50 * 1024;
@@ -81,12 +82,9 @@ export function execute(command: string, cwd: string, streamAndDetect: boolean):
         const url = match[0];
         if (!seenUrls.has(url)) {
           seenUrls.add(url);
-          if (!urlPrinted) {
-            urlPrinted = true;
-            console.log('');
-          }
+          urlPrinted = true;
           logger.info('url_detected', { url });
-          console.log(`\x1b[32m\x1b[1m  Open in browser: ${url}\x1b[0m`);
+          printUrl(url);
         }
       }
 
@@ -98,6 +96,7 @@ export function execute(command: string, cwd: string, streamAndDetect: boolean):
           printError(error.issue, error.fix);
         }
       }
+
     };
 
     child.stdout?.on('data', handleChunk);
@@ -135,7 +134,3 @@ export function execute(command: string, cwd: string, streamAndDetect: boolean):
   });
 }
 
-function printError(issue: string, fix: string): void {
-  console.log(`\n\x1b[31m✗ ${issue}\x1b[0m`);
-  console.log(`\x1b[33m  What to do: ${fix}\x1b[0m\n`);
-}
