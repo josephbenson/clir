@@ -29,9 +29,12 @@ export function execute(command: string, cwd: string, streamAndDetect: boolean):
     const shell = process.env.SHELL ?? '/bin/zsh';
     logger.info('command_start', { command, cwd });
 
+    const isOrchestrator = /\bturbo\b|\bnx\b/.test(command);
+    const stdio = !streamAndDetect || isOrchestrator ? 'inherit' : 'pipe';
+
     const child = spawn(shell, ['-c', command], {
       cwd,
-      stdio: streamAndDetect ? 'pipe' : 'inherit',
+      stdio,
       env: { ...process.env, PATH: `${extraPaths}:${process.env.PATH ?? ''}` },
     });
 
@@ -53,6 +56,21 @@ export function execute(command: string, cwd: string, streamAndDetect: boolean):
       });
       child.on('error', (err) => {
         clearTimeout(timer);
+        activeChildren.splice(activeChildren.indexOf(child), 1);
+        logger.error('command_error', { command, error: err.message });
+        reject(err);
+      });
+      return;
+    }
+
+    if (isOrchestrator) {
+      child.on('close', (code) => {
+        activeChildren.splice(activeChildren.indexOf(child), 1);
+        const exitCode = code ?? 0;
+        logger.info('command_complete', { command, exitCode });
+        exitCode === 0 ? resolve() : reject(new Error(`"${command}" exited with code ${exitCode}`));
+      });
+      child.on('error', (err) => {
         activeChildren.splice(activeChildren.indexOf(child), 1);
         logger.error('command_error', { command, error: err.message });
         reject(err);
