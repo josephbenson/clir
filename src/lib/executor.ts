@@ -31,12 +31,10 @@ export function execute(command: string, cwd: string, streamAndDetect: boolean):
 
     const isOrchestrator = /\bturbo\b|\bnx\b/.test(command);
     const stdio = !streamAndDetect || isOrchestrator ? 'inherit' : 'pipe';
+    const env: NodeJS.ProcessEnv = { ...process.env, PATH: `${extraPaths}:${process.env.PATH ?? ''}` };
+    if (isOrchestrator) env['TURBO_UI'] = 'true';
 
-    const child = spawn(shell, ['-c', command], {
-      cwd,
-      stdio,
-      env: { ...process.env, PATH: `${extraPaths}:${process.env.PATH ?? ''}` },
-    });
+    const child = spawn(shell, ['-c', command], { cwd, stdio, env });
 
     activeChildren.push(child);
 

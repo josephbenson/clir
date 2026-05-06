@@ -26,11 +26,10 @@ export function execute(command, cwd, streamAndDetect) {
         logger.info('command_start', { command, cwd });
         const isOrchestrator = /\bturbo\b|\bnx\b/.test(command);
         const stdio = !streamAndDetect || isOrchestrator ? 'inherit' : 'pipe';
-        const child = spawn(shell, ['-c', command], {
-            cwd,
-            stdio,
-            env: { ...process.env, PATH: `${extraPaths}:${process.env.PATH ?? ''}` },
-        });
+        const env = { ...process.env, PATH: `${extraPaths}:${process.env.PATH ?? ''}` };
+        if (isOrchestrator)
+            env['TURBO_UI'] = 'true';
+        const child = spawn(shell, ['-c', command], { cwd, stdio, env });
         activeChildren.push(child);
         if (!streamAndDetect) {
             const timer = setTimeout(() => {
