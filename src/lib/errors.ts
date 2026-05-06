@@ -5,7 +5,7 @@ type KnownError = {
   pattern: RegExp;
   suppressedBy?: RegExp;
   issue: string;
-  fix: string;
+  fix: string | ((output: string) => string);
 };
 
 const KNOWN_ERRORS: KnownError[] = [
@@ -39,13 +39,24 @@ const KNOWN_ERRORS: KnownError[] = [
     fix: 'Try reinstalling dependencies:\n  pnpm install (or npm install)',
   },
   {
+    pattern: /EADDRINUSE|address already in use|Something is already running on port \d+|port \d+ is already in use/i,
+    issue: 'Port is already in use.',
+    fix: (output: string) => {
+      const match = output.match(/port[: ]+(\d+)|EADDRINUSE[^:]*:(\d+)/i);
+      const port = match?.[1] ?? match?.[2] ?? '';
+      const portStr = port ? ` ${port}` : '';
+      const killCmd = port ? `lsof -ti:${port} | xargs kill -9` : 'lsof -ti:<port> | xargs kill -9';
+      return `Something else is using port${portStr}.\nKill it:\n  ${killCmd}\nThen run: clir --skip-install\n\nOr set a different PORT value in .env.local`;
+    },
+  },
+  {
     pattern: /ENOENT.*\.env/,
     issue: 'A required environment file is missing.',
     fix: 'Copy the example env file:\n  cp .env.example .env.local\nThen fill in the required values.',
   },
 ];
 
-export function matchKnownErrors(output: string): KnownError[] {
+export function matchKnownErrors(output: string): { issue: string; fix: string }[] {
   const seen = new Set<string>();
   return KNOWN_ERRORS.filter(e => {
     if (!e.pattern.test(output)) return false;
@@ -53,7 +64,10 @@ export function matchKnownErrors(output: string): KnownError[] {
     if (seen.has(e.issue)) return false;
     seen.add(e.issue);
     return true;
-  });
+  }).map(e => ({
+    issue: e.issue,
+    fix: typeof e.fix === 'function' ? e.fix(output) : e.fix,
+  }));
 }
 
 export async function analyzeWithClaude(output: string): Promise<string | null> {

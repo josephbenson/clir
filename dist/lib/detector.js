@@ -8,24 +8,64 @@ export function detectStack(projectDir) {
     if (pythonPm) {
         return detectPythonStack(projectDir, pythonPm);
     }
+    if (fs.existsSync(path.join(projectDir, 'pubspec.yaml'))) {
+        return { installCommand: 'flutter pub get', setupCommands: [], startCommand: 'flutter run' };
+    }
     if (fs.existsSync(path.join(projectDir, 'go.mod'))) {
         return { installCommand: 'go mod download', setupCommands: [], startCommand: resolveGoStartCommand(projectDir) };
     }
     return null;
 }
 // ─── Node ────────────────────────────────────────────────────────────────────
+const ORCHESTRATORS = ['turbo', 'nx', 'concurrently', 'run-p', 'lerna run'];
+const SERVICE_DIRS = ['apps', 'services'];
 function detectNodeStack(projectDir) {
     const packageJsonPath = path.join(projectDir, 'package.json');
     const packageManager = resolveNodePackageManager(projectDir);
     const pkg = JSON.parse(fs.readFileSync(packageJsonPath, 'utf-8'));
     const startScript = pkg.scripts?.dev ? 'dev' : pkg.scripts?.start ? 'start' : null;
+    const rootScript = pkg.scripts?.dev ?? pkg.scripts?.start ?? '';
+    const isOrchestrator = ORCHESTRATORS.some(t => rootScript.includes(t));
+    const setupCommands = detectNodeSetupCommands(projectDir, packageManager, pkg.scripts ?? {});
+    if (!isOrchestrator) {
+        const services = detectConcurrentServices(projectDir, packageManager);
+        if (services.length >= 2) {
+            return { installCommand: `${packageManager} install`, setupCommands, startCommand: '', concurrentServices: services };
+        }
+    }
     const startCommand = startScript
         ? packageManager === 'npm'
             ? `npm run ${startScript}`
             : `${packageManager} ${startScript}`
         : '';
-    const setupCommands = detectNodeSetupCommands(projectDir, packageManager, pkg.scripts ?? {});
     return { installCommand: `${packageManager} install`, setupCommands, startCommand };
+}
+function detectConcurrentServices(projectDir, packageManager) {
+    const services = [];
+    for (const dir of SERVICE_DIRS) {
+        const baseDir = path.join(projectDir, dir);
+        if (!fs.existsSync(baseDir))
+            continue;
+        const entries = fs.readdirSync(baseDir, { withFileTypes: true }).filter(e => e.isDirectory());
+        for (const entry of entries) {
+            const pkgPath = path.join(baseDir, entry.name, 'package.json');
+            if (!fs.existsSync(pkgPath))
+                continue;
+            const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf-8'));
+            const startScript = pkg.scripts?.dev ? 'dev' : pkg.scripts?.start ? 'start' : null;
+            if (!startScript)
+                continue;
+            const command = packageManager === 'npm'
+                ? `npm run ${startScript}`
+                : `${packageManager} ${startScript}`;
+            services.push({
+                name: pkg.name ?? entry.name,
+                cwd: path.join(baseDir, entry.name),
+                command,
+            });
+        }
+    }
+    return services;
 }
 function detectNodeSetupCommands(projectDir, packageManager, scripts) {
     const commands = [];

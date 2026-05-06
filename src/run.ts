@@ -2,7 +2,7 @@ import { resolveSource } from './lib/source.js';
 import { detectStack } from './lib/detector.js';
 import { readDocs } from './lib/docs.js';
 import { parseInstructions } from './lib/parser.js';
-import { execute } from './lib/executor.js';
+import { execute, executeConcurrent } from './lib/executor.js';
 import { checkEnvExample } from './lib/env.js';
 import { runPreflightChecks } from './lib/checks.js';
 import { logger } from './lib/logger.js';
@@ -33,7 +33,9 @@ export async function run(source: string | undefined, options: Options): Promise
 
   logger.info('stack_detected', { installCommand, setupCommands, startCommand, usedDetector: !!stack });
 
-  if (!installCommand || !startCommand) {
+  const hasConcurrentServices = !!(stack?.concurrentServices?.length);
+
+  if (!installCommand || (!startCommand && !hasConcurrentServices)) {
     if (process.env.ANTHROPIC_API_KEY) {
       printStatus('Reading project docs to determine setup...');
       const docs = readDocs(projectDir);
@@ -57,7 +59,7 @@ export async function run(source: string | undefined, options: Options): Promise
     }
   }
 
-  if (!startCommand) {
+  if (!startCommand && !hasConcurrentServices) {
     logger.error('start_command_missing');
     console.error('Could not determine the start command. Check the project README and try manually.');
     process.exit(1);
@@ -73,6 +75,12 @@ export async function run(source: string | undefined, options: Options): Promise
     await execute(command, projectDir, false);
   }
 
-  printStatus(`Starting: ${startCommand}`);
-  await execute(startCommand, projectDir, true);
+  if (hasConcurrentServices) {
+    const names = stack!.concurrentServices!.map(s => s.name).join(', ');
+    printStatus(`Starting: ${names}`);
+    await executeConcurrent(stack!.concurrentServices!);
+  } else {
+    printStatus(`Starting: ${startCommand}`);
+    await execute(startCommand, projectDir, true);
+  }
 }
